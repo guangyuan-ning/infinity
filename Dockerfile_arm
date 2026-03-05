@@ -1,0 +1,94 @@
+# 基于 aarch64 架构的 Ubuntu 24.04 镜像
+FROM arm64v8/ubuntu:24.04
+
+# 设置时区为 UTC，防止在安装时有时区问题
+ENV TZ=UTC
+
+# 更新并安装一些基础工具
+RUN apt update && apt upgrade -y && apt install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    ninja-build \
+    clang-20 \
+    pkg-config \
+    libssl-dev \
+    libboost-all-dev \
+    libgoogle-glog-dev \
+    libgflags-dev \
+    libevent-dev \
+    libpcre2-dev \
+    libprotobuf-dev \
+    libspdlog-dev \
+    ca-certificates \
+    lsb-release \
+    apt-transport-https \
+    wget \
+    libcurl4-openssl-dev \
+    libjemalloc-dev \
+    zlib1g-dev \
+    zip \
+    software-properties-common \
+    bison \
+    mold \
+    gnupg
+    
+
+
+# 安装其他依赖库，如 libarrow，libparquet，libgtest 等
+RUN apt install -y \
+    libgtest-dev \
+    libevent-dev \
+    libmagic-dev \
+    libgflags-dev \
+    libboost-dev \
+    libboost-system-dev \
+    libboost-thread-dev \
+    libboost-filesystem-dev \
+    libboost-program-options-dev \
+    libboost-regex-dev \
+    libabsl-dev \
+    libcli11-dev \
+    nlohmann-json3-dev \
+    libpugixml-dev \
+    libroaring-dev \
+    librocksdb-dev \
+    libsimdjson-dev \
+    libre2-dev \
+    libtomlplusplus-dev \
+    libinih-dev
+
+
+RUN wget https://packages.apache.org/artifactory/arrow/$(lsb_release -is | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release -cs).deb && \
+    apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release -cs).deb && \
+    apt update && \
+    apt install -y \
+    libarrow-dev \
+    libparquet-dev 
+
+RUN git clone https://github.com/oatpp/oatpp.git && \
+    cd oatpp && \
+    mkdir build && cd build && \
+    cmake .. && \
+    make -j6 && \
+    make install
+
+
+RUN git clone https://github.com/Neargye/magic_enum.git && \
+    cd magic_enum && \
+    mkdir -p build && cd build  && \
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..  && \
+    cmake --build . --target install  && \
+
+# 克隆 Infinity 源代码
+RUN git clone https://github.com/YourInfinityRepo/infinity.git /opt/infinity
+
+# 构建 Infinity 项目
+WORKDIR /opt/infinity
+RUN mkdir build && cd build \
+    && cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. \
+    && ninja
+
+# 设置默认命令（根据 Infinity 项目要求设置启动命令）
+CMD ["/opt/infinity/build/bin/infinity_executable"]
